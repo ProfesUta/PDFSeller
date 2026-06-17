@@ -13,7 +13,8 @@ function isOwner() {
 export default function Admin() {
   const [listings, setListings] = useState([]);
   const [selectedFile, setSelectedFile] = useState(null);
-  const [selectedImage, setSelectedImage] = useState(null);
+  const [selectedImageFile, setSelectedImageFile] = useState(null);
+  const [coverPreview, setCoverPreview] = useState(null);
   const [ownerMode, setOwnerMode] = useState(isOwner());
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -26,7 +27,11 @@ export default function Admin() {
   });
 
   useEffect(() => {
-    setListings(Store.getAll());
+    async function loadListings() {
+      const items = await Store.getAll();
+      setListings(items);
+    }
+    loadListings();
   }, [ownerMode]);
 
   const stats = {
@@ -37,7 +42,8 @@ export default function Admin() {
   const resetForm = () => {
     setForm({ title: "", price: "", category: "", description: "", tags: "" });
     setSelectedFile(null);
-    setSelectedImage(null);
+    setSelectedImageFile(null);
+    setCoverPreview(null);
   };
 
   const publishDocument = async () => {
@@ -57,7 +63,6 @@ export default function Admin() {
       return setError("Please add a short description.");
     if (!selectedFile) return setError("Please select a PDF file to upload.");
 
-    const fileData = await readFileAsDataURL(selectedFile);
     const tags = form.tags
       ? form.tags
           .split(",")
@@ -65,32 +70,32 @@ export default function Admin() {
           .filter(Boolean)
       : [];
 
-    Store.save({
-      title: form.title,
-      price: parseFloat(form.price) || 0,
-      category: form.category,
-      description: form.description,
-      tags,
-      fileName: selectedFile.name,
-      fileSize: selectedFile.size,
-      fileData,
-      coverImage: selectedImage || null,
-    });
+    try {
+      await Store.save(
+        {
+          title: form.title,
+          price: parseFloat(form.price) || 0,
+          category: form.category,
+          description: form.description,
+          tags,
+        },
+        selectedFile,
+        selectedImageFile,
+      );
 
-    setSuccess(
-      "✅ Document published successfully! It's now live in your store.",
-    );
-    resetForm();
-    setListings(Store.getAll());
+      setSuccess(
+        "✅ Document published successfully! It's now live in your store.",
+      );
+      resetForm();
+      const items = await Store.getAll();
+      setListings(items);
+    } catch (saveError) {
+      setError(
+        saveError?.message || "Unable to publish the document right now.",
+      );
+      console.error(saveError);
+    }
   };
-
-  const readFileAsDataURL = (file) =>
-    new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = (e) => resolve(e.target.result);
-      reader.onerror = () => reject(new Error("Failed to read file"));
-      reader.readAsDataURL(file);
-    });
 
   const handleFileSelect = (file) => {
     if (!file) return;
@@ -108,14 +113,17 @@ export default function Admin() {
       return setError("Please select a valid image file.");
     if (file.size > 5 * 1024 * 1024)
       return setError("Image too large. Maximum size is 5MB.");
+
     const reader = new FileReader();
-    reader.onload = (e) => setSelectedImage(e.target.result);
+    reader.onload = (e) => setCoverPreview(e.target.result);
     reader.readAsDataURL(file);
+    setSelectedImageFile(file);
   };
 
-  const deleteListing = (id) => {
-    Store.delete(id);
-    setListings(Store.getAll());
+  const deleteListing = async (id) => {
+    await Store.delete(id);
+    const items = await Store.getAll();
+    setListings(items);
   };
 
   const unlockOwner = (code) => {
@@ -288,18 +296,21 @@ export default function Admin() {
                     onChange={(e) => handleImageSelect(e.target.files[0])}
                   />
                 </div>
-                {selectedImage && (
+                {coverPreview && (
                   <div id="imgPreviewWrap" style={{ display: "block" }}>
                     <img
                       id="imgPreview"
                       className="img-preview"
-                      src={selectedImage}
+                      src={coverPreview}
                       alt="Preview"
                     />
                     <button
                       className="file-remove"
                       type="button"
-                      onClick={() => setSelectedImage(null)}
+                      onClick={() => {
+                        setSelectedImageFile(null);
+                        setCoverPreview(null);
+                      }}
                     >
                       Remove image
                     </button>

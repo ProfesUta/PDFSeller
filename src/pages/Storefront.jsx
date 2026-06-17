@@ -10,10 +10,18 @@ export default function Storefront() {
   const [modalListing, setModalListing] = useState(null);
 
   useEffect(() => {
-    setListings(Store.getAll());
+    async function loadListings() {
+      const items = await Store.getAll();
+      setListings(items);
+    }
+    loadListings();
   }, []);
 
-  const categories = useMemo(() => Store.getCategories(), [listings]);
+  const categories = useMemo(() => {
+    const cats = [...new Set(listings.map((l) => l.category).filter(Boolean))];
+    return cats.sort();
+  }, [listings]);
+
   const filtered = useMemo(() => {
     return listings.filter((listing) => {
       const matchesCategory =
