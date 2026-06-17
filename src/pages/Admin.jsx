@@ -333,6 +333,7 @@ export default function Admin() {
                           "📄"
                         )}
                       </div>
+
                       <div className="listing-info">
                         <div className="listing-title">{listing.title}</div>
                         <div className="listing-meta">
