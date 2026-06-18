@@ -14,5 +14,5 @@ export const supabase =
     : null;
 
 export const isSupabaseEnabled = Boolean(supabase);
-export const STORAGE_BUCKET = "pdfseller-docs";
-export const COVER_BUCKET = "pdfseller-covers";
+export const STORAGE_BUCKET = "SasurveiFaili";
+export const COVER_BUCKET = "SasurveiFaili";
